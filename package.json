@@ -1,0 +1,16 @@
+{
+  "name": "audio_qr",
+  "version": "1.0.0",
+  "description": "Audio upload with QR code sharing",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^2.0.2",
+    "qrcode": "^1.5.4",
+    "uuid": "^13.0.0"
+  }
+}

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin — Audio 2 QR</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="admin-page">
+      <div class="admin-container">
+        <h1 class="admin-title">Transferts</h1>
+
+        <div class="table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nom du fichier</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="filesList"></tbody>
+          </table>
+
+          <p id="emptyState" class="empty-state" hidden>
+            Aucun transfert pour le moment
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      async function loadFiles() {
+        const tbody = document.getElementById("filesList");
+        const emptyState = document.getElementById("emptyState");
+
+        try {
+          const response = await fetch("/api/files");
+          const files = await response.json();
+
+          if (!files.length) {
+            emptyState.hidden = false;
+            return;
+          }
+
+          emptyState.hidden = true;
+
+          tbody.innerHTML = files
+            .map(
+              (file) => `
+              <tr>
+                <td>${file.id}</td>
+                <td class="filename-cell" title="${file.filename}">
+                  ${file.filename}
+                </td>
+                <td class="actions-cell">
+                  <button
+                    class="play-action"
+                    data-url="${file.downloadUrl}"
+                    title="Écouter 30s"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  </button>
+
+                  <a
+                    href="${file.downloadUrl}"
+                    download
+                    class="download-action"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  </a>
+                </td>
+              </tr>
+            `
+            )
+            .join("");
+        } catch (error) {
+          console.error("Failed to load files:", error);
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="3" class="error-cell">Erreur de chargement</td>
+            </tr>
+          `;
+        }
+      }
+
+      loadFiles();
+
+      // ===== Audio preview (30 seconds max) =====
+      let currentAudio = null;
+      let currentBtn = null;
+
+      document.addEventListener("click", (e) => {
+        const btn = e.target.closest(".play-action");
+        if (!btn) return;
+
+        const audioUrl = btn.dataset.url;
+
+        if (currentBtn === btn && currentAudio) {
+          if (currentAudio.paused) {
+            currentAudio.play();
+            btn.classList.add("playing");
+          } else {
+            currentAudio.pause();
+            btn.classList.remove("playing");
+          }
+          return;
+        }
+
+        if (currentAudio) {
+          currentAudio.pause();
+          if (currentBtn) currentBtn.classList.remove("playing");
+        }
+
+        currentAudio = new Audio(audioUrl);
+        currentBtn = btn;
+
+        currentAudio.addEventListener("timeupdate", () => {
+          if (currentAudio.currentTime >= 30) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+            btn.classList.remove("playing");
+          }
+        });
+
+        currentAudio.addEventListener("ended", () => {
+          btn.classList.remove("playing");
+        });
+
+        currentAudio.play();
+        btn.classList.add("playing");
+      });
+    </script>
+  </body>
+</html>

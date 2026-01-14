@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Audio to QR — Share audio instantly</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Main container -->
+    <main class="container">
+      <!-- Upload Section (idle state) -->
+      <section id="uploadSection" class="hero">
+        <h1 class="title">Audio 2 QR</h1>
+        <p class="subtitle">
+          Uploadez un fichier audio, obtenez un QR code partageable
+        </p>
+
+        <!-- Drop zone -->
+        <div id="dropZone" class="drop-zone">
+          <div class="drop-zone-content">
+            <!-- Upload icon -->
+            <svg
+              class="upload-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <p class="drop-text">Glissez et déposez votre fichier audio ici</p>
+            <span class="drop-or">or</span>
+            <label class="browse-btn">
+              Parcourir les fichiers
+              <input type="file" id="audioInput" accept="audio/*" hidden />
+            </label>
+            <p class="file-hint">MP3, WAV, OGG, M4A supportés</p>
+          </div>
+        </div>
+
+        <!-- File selected indicator -->
+        <div id="fileSelected" class="file-selected" hidden>
+          <span id="fileName" class="file-name"></span>
+          <button id="clearFile" class="clear-btn" type="button">
+            &times;
+          </button>
+        </div>
+
+        <!-- Upload button -->
+        <button id="uploadBtn" class="primary-btn" disabled>
+          <span class="btn-text">Générer le QR Code</span>
+          <span class="btn-loader" hidden></span>
+        </button>
+      </section>
+
+      <!-- Loading State -->
+      <section id="loadingSection" class="hero" hidden>
+        <div class="loader-container">
+          <div class="loader"></div>
+          <p class="loading-text">Génération de votre QR code...</p>
+        </div>
+      </section>
+
+      <!-- Result Section (success state) -->
+      <section id="resultSection" class="hero" hidden>
+        <h2 class="result-title">Votre QR Code est prêt!</h2>
+
+        <div class="qr-container">
+          <img id="qrImage" class="qr-image" alt="QR Code" />
+        </div>
+
+        <div class="actions">
+          <a id="audioLink" class="action-btn primary" target="_blank">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+            Ouvrir la page audio
+          </a>
+          <button id="downloadQr" class="action-btn secondary">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Télécharger le QR
+          </button>
+          <button id="copyLink" class="action-btn secondary">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path
+                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+              />
+            </svg>
+            <span id="copyText">Copier le lien</span>
+          </button>
+        </div>
+
+        <button id="newUpload" class="new-upload-btn">
+          Uploader un autre fichier
+        </button>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Simple. Rapide. Gratuit.</p>
+    </footer>
+
+    <script>
+      // DOM Elements
+      const dropZone = document.getElementById("dropZone");
+      const audioInput = document.getElementById("audioInput");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const fileSelected = document.getElementById("fileSelected");
+      const fileName = document.getElementById("fileName");
+      const clearFile = document.getElementById("clearFile");
+      const uploadSection = document.getElementById("uploadSection");
+      const loadingSection = document.getElementById("loadingSection");
+      const resultSection = document.getElementById("resultSection");
+      const qrImage = document.getElementById("qrImage");
+      const audioLink = document.getElementById("audioLink");
+      const copyLink = document.getElementById("copyLink");
+      const copyText = document.getElementById("copyText");
+      const downloadQr = document.getElementById("downloadQr");
+      const newUpload = document.getElementById("newUpload");
+      const btnText = document.querySelector(".btn-text");
+      const btnLoader = document.querySelector(".btn-loader");
+
+      let selectedFile = null;
+      let currentAudioUrl = "";
+
+      // Drag & Drop handlers
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("drag-over");
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("drag-over");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("drag-over");
+        const files = e.dataTransfer.files;
+        if (files.length && files[0].type.startsWith("audio/")) {
+          handleFileSelect(files[0]);
+        }
+      });
+
+      // Click on drop zone triggers file input
+      dropZone.addEventListener("click", () => {
+        audioInput.click();
+      });
+
+      // File input change
+      audioInput.addEventListener("change", () => {
+        if (audioInput.files.length) {
+          handleFileSelect(audioInput.files[0]);
+        }
+      });
+
+      // Handle file selection
+      function handleFileSelect(file) {
+        selectedFile = file;
+        fileName.textContent = file.name;
+        fileSelected.hidden = false;
+        uploadBtn.disabled = false;
+        dropZone.classList.add("has-file");
+      }
+
+      // Clear selected file
+      clearFile.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectedFile = null;
+        audioInput.value = "";
+        fileSelected.hidden = true;
+        uploadBtn.disabled = true;
+        dropZone.classList.remove("has-file");
+      });
+
+      // Upload handler
+      uploadBtn.addEventListener("click", async () => {
+        if (!selectedFile) return;
+
+        // Show loading state
+        uploadSection.hidden = true;
+        loadingSection.hidden = false;
+
+        try {
+          const formData = new FormData();
+          formData.append("audio", selectedFile);
+
+          const response = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) throw new Error("Upload failed");
+
+          const data = await response.json();
+          currentAudioUrl = data.audioUrl;
+
+          // Show result
+          qrImage.src = data.qrCode;
+          audioLink.href = data.audioUrl;
+          loadingSection.hidden = true;
+          resultSection.hidden = false;
+        } catch (error) {
+          alert("Upload failed. Please try again.");
+          loadingSection.hidden = true;
+          uploadSection.hidden = false;
+        }
+      });
+
+      // Copy link functionality
+      copyLink.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(currentAudioUrl);
+          copyText.textContent = "Copied!";
+          setTimeout(() => {
+            copyText.textContent = "Copy link";
+          }, 2000);
+        } catch (err) {
+          // Fallback for older browsers
+          const input = document.createElement("input");
+          input.value = currentAudioUrl;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand("copy");
+          document.body.removeChild(input);
+          copyText.textContent = "Copied!";
+          setTimeout(() => {
+            copyText.textContent = "Copy link";
+          }, 2000);
+        }
+      });
+
+      // Download QR code
+      downloadQr.addEventListener("click", () => {
+        const link = document.createElement("a");
+        link.download = "qr-code.png";
+        link.href = qrImage.src;
+        link.click();
+      });
+
+      // New upload - reset to initial state
+      newUpload.addEventListener("click", () => {
+        selectedFile = null;
+        audioInput.value = "";
+        fileSelected.hidden = true;
+        uploadBtn.disabled = true;
+        dropZone.classList.remove("has-file");
+        resultSection.hidden = true;
+        uploadSection.hidden = false;
+      });
+    </script>
+  </body>
+</html>
