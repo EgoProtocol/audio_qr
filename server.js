@@ -79,13 +79,15 @@ app.post("/upload", (req, res) => {
 });
 
 // ===== Public audio page =====
-app.get("/audio/:publicId", (req, res) => {
+// Use wildcard to capture publicId with folder prefix (audio_qr/xxx)
+app.get("/audio/*", (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "audio.html"));
 });
 
 // ===== Get audio file URL from Cloudinary =====
-app.get("/files/:publicId", (req, res) => {
-  const { publicId } = req.params;
+app.get("/files/*", (req, res) => {
+  // Get everything after /files/
+  const publicId = req.params[0];
   const url = cloudinary.url(publicId, {
     resource_type: "video",
     secure: true,
