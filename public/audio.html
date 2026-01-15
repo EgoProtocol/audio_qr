@@ -52,13 +52,15 @@
     </main>
 
     <script>
-      const filename = window.location.pathname.split("/").pop();
-      const fileUrl = `/files/${filename}`;
+      // Get publicId from URL (everything after /audio/)
+      const pathname = window.location.pathname;
+      const publicId = pathname.replace("/audio/", "");
+      const fileUrl = `/files/${publicId}`;
 
       document.getElementById("player").src = fileUrl;
       document.getElementById("download").href = fileUrl;
-      document.getElementById("filename").textContent =
-        decodeURIComponent(filename);
+      // Display only the file ID (last part after /)
+      document.getElementById("filename").textContent = publicId.split("/").pop();
     </script>
   </body>
 </html>
