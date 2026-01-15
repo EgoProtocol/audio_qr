@@ -46,26 +46,36 @@ const upload = multer({
 app.use(express.static(PUBLIC_DIR));
 
 // ===== Upload route =====
-app.post("/upload", upload.single("audio"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+app.post("/upload", (req, res) => {
+  upload.single("audio")(req, res, async (err) => {
+    if (err) {
+      console.error("Upload error:", err.message || err);
+      return res.status(500).json({ error: "Upload failed: " + (err.message || "Unknown error") });
+    }
 
-  // req.file.path contains the Cloudinary URL
-  // req.file.filename contains the public_id
-  const publicId = req.file.filename;
-  const audioUrl = `${BASE_URL}/audio/${publicId}`;
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
-  try {
-    const qrCode = await QRCode.toDataURL(audioUrl);
+    console.log("File uploaded:", req.file);
 
-    res.json({
-      audioUrl,
-      qrCode,
-    });
-  } catch (err) {
-    res.status(500).json({ error: "QR generation failed" });
-  }
+    // req.file.path contains the Cloudinary URL
+    // req.file.filename contains the public_id
+    const publicId = req.file.filename;
+    const audioUrl = `${BASE_URL}/audio/${publicId}`;
+
+    try {
+      const qrCode = await QRCode.toDataURL(audioUrl);
+
+      res.json({
+        audioUrl,
+        qrCode,
+      });
+    } catch (qrErr) {
+      console.error("QR error:", qrErr.message || qrErr);
+      res.status(500).json({ error: "QR generation failed" });
+    }
+  });
 });
 
 // ===== Public audio page =====
